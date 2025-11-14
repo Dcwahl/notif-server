@@ -12,13 +12,14 @@ mod db;
 #[tokio::main]
 async fn main() {
     //init db
-    let pool = db::test_init().await.unwrap();
+    let pool = db::init_db().await.unwrap();
 
     // build our application with a single route
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
         .route("/test_insert", get(test_insert_handler))
         .route("/notifications", get(fetch_notifications).post(create_notification))
+        .route("/debug/notifications", get(debug_all_notifications))
         .with_state(pool);
 
     // run our app with hyper, listening globally on port 3000
@@ -49,15 +50,27 @@ struct Notification {
 struct CreateNotificationRequest {
     title: String,
     message: String,
+    scheduled_for: Option<String>,
+}
+
+#[derive(Serialize)]
+struct NotificationDebug {
+    id: i64,
+    title: String,
+    message: String,
+    timestamp: String,
+    scheduled_for: Option<String>,
 }
 
 async fn create_notification(pool: State<SqlitePool>, notification: Json<CreateNotificationRequest>) -> Json<Notification> {
+    println!("Creating notification: {:?}", notification.title);
     let title = &notification.title;
     let message = &notification.message;
-    let row = db::add_notification(&pool, title, message).await.unwrap();
+    let scheduled_for = &notification.scheduled_for;
+    let row = db::add_notification(&pool, title, message, scheduled_for.as_deref()).await.unwrap();
 
     let (id, title, message, timestamp) = row;
-
+    println!("Created notification with ID: {}", id);
     Json(Notification { id, title, message, timestamp })
 }
 
@@ -65,6 +78,7 @@ async fn fetch_notifications(
     State(pool): State<SqlitePool>,
     Query(params): Query<NotificationQuery>,
 ) -> Json<Vec<Notification>> {
+    println!("Fetching notifications");
     let last_seen_id = params.id.unwrap_or(-1);
 
     let rows = db::get_latest_notifications(&pool, &last_seen_id)
@@ -73,9 +87,26 @@ async fn fetch_notifications(
             eprintln!("DB error: {}", e);
             vec![]  // return empty vec on error
         });
-    
+
     let notifications: Vec<Notification> = rows.into_iter()
         .map(|(id, title, message, timestamp)| Notification { id, title, message, timestamp })
+        .collect();
+
+    Json(notifications)
+}
+
+async fn debug_all_notifications(State(pool): State<SqlitePool>) -> Json<Vec<NotificationDebug>> {
+    let rows = db::get_all_notifications(&pool)
+        .await
+        .unwrap_or_else(|e| {
+            eprintln!("DB error: {}", e);
+            vec![]
+        });
+
+    let notifications: Vec<NotificationDebug> = rows.into_iter()
+        .map(|(id, title, message, timestamp, scheduled_for)| NotificationDebug {
+            id, title, message, timestamp, scheduled_for
+        })
         .collect();
 
     Json(notifications)

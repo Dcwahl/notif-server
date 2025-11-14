@@ -1,36 +1,14 @@
 use sqlx::SqlitePool;
 
 
-pub async fn test_init() -> Result<SqlitePool, sqlx::Error>{
+pub async fn init_db() -> Result<SqlitePool, sqlx::Error>{
 
     //question mark is like a try catch i guess
     let pool = SqlitePool::connect("sqlite://notifications.db?mode=rwc").await?;
-
-
-    // let test_create_table = r#"
-    //     CREATE TABLE IF NOT EXISTS test_table (
-    //         id INTEGER PRIMARY KEY AUTOINCREMENT,
-    //         name TEXT NOT NULL
-    //     );
-    // "#;
-
-    // sqlx::query(test_create_table).execute(&pool).await?;
-
-
-    let create_notifications_table = r#"
-        CREATE TABLE IF NOT EXISTS notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            message TEXT NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    "#;
-
-    sqlx::query(create_notifications_table).execute(&pool).await?;
-
-
+    sqlx::migrate!("./migrations").run(&pool).await?;
     Ok(pool)
 }
+
 
 pub async fn test_write_to_db(pool: &SqlitePool, name: &str) -> Result<(), sqlx::Error> {
     let insert_query = r#"
@@ -45,16 +23,17 @@ pub async fn test_write_to_db(pool: &SqlitePool, name: &str) -> Result<(), sqlx:
     Ok(())
 }
 
-pub async fn add_notification(pool: &SqlitePool, title: &str, message: &str) -> Result<(i64, String, String, String), sqlx::Error> {
+pub async fn add_notification(pool: &SqlitePool, title: &str, message: &str, scheduled_for: Option<&str>) -> Result<(i64, String, String, String), sqlx::Error> {
     let insert_query = r#"
-        INSERT INTO notifications (title, message)
-        VALUES (?1, ?2)
+        INSERT INTO notifications (title, message, scheduled_for)
+        VALUES (?1, ?2, ?3)
         RETURNING id, title, message, timestamp;
     "#;
 
     let row = sqlx::query_as::<_, (i64, String, String, String)>(insert_query)
         .bind(title)
         .bind(message)
+        .bind(scheduled_for)
         .fetch_one(pool)
         .await?;
 
@@ -63,11 +42,27 @@ pub async fn add_notification(pool: &SqlitePool, title: &str, message: &str) -> 
 
 pub async fn get_latest_notifications(pool: &SqlitePool, id: &i64) -> Result<Vec<(i64, String, String, String)>, sqlx::Error> {
     let select_query = r#"
-        SELECT id, title, message, timestamp FROM notifications WHERE id > ?1 ORDER BY id ASC;
+        SELECT id, title, message, timestamp FROM notifications
+        WHERE id > ?1
+        AND (scheduled_for IS NULL or datetime(scheduled_for) <= datetime('now'))
+        ORDER BY id ASC;
     "#;
-
     let rows = sqlx::query_as::<_, (i64, String, String, String)>(select_query)
         .bind(id)
+        .fetch_all(pool)
+        .await?;
+
+    println!("Fetched {} notifications from DB", rows.len());
+
+    Ok(rows)
+}
+
+pub async fn get_all_notifications(pool: &SqlitePool) -> Result<Vec<(i64, String, String, String, Option<String>)>, sqlx::Error> {
+    let select_query = r#"
+        SELECT id, title, message, timestamp, scheduled_for FROM notifications ORDER BY id ASC;
+    "#;
+
+    let rows = sqlx::query_as::<_, (i64, String, String, String, Option<String>)>(select_query)
         .fetch_all(pool)
         .await?;
 
