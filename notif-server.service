@@ -1,0 +1,19 @@
+[Unit]
+Description=Notification Server
+After=network.target
+
+[Service]
+Type=simple
+User=diegowahl
+WorkingDirectory=/home/pi/notif-server
+ExecStart=/home/pi/notif-server/target/release/notif-server
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=notif-server
+
+[Install]
+WantedBy=multi-user.target

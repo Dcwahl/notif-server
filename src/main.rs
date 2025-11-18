@@ -78,7 +78,7 @@ async fn fetch_notifications(
     State(pool): State<SqlitePool>,
     Query(params): Query<NotificationQuery>,
 ) -> Json<Vec<Notification>> {
-    println!("Fetching notifications");
+    //println!("Fetching notifications");
     let last_seen_id = params.id.unwrap_or(-1);
 
     let rows = db::get_latest_notifications(&pool, &last_seen_id)
