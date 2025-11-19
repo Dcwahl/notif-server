@@ -2,12 +2,16 @@ use axum::{
     Router,
     extract::{Query, State},
     routing::{get, post},
-    Json
+    Json,
+    http::StatusCode
 };
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
+use std::time::SystemTime;
 
 mod db;
+
+static START_TIME: std::sync::LazyLock<SystemTime> = std::sync::LazyLock::new(SystemTime::now);
 
 #[tokio::main]
 async fn main() {
@@ -17,14 +21,49 @@ async fn main() {
     // build our application with a single route
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
+        .route("/health", get(health_check))
         .route("/test_insert", get(test_insert_handler))
         .route("/notifications", get(fetch_notifications).post(create_notification))
         .route("/debug/notifications", get(debug_all_notifications))
         .with_state(pool);
 
-    // run our app with hyper, listening globally on port 3000
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    // run our app with hyper, listening globally on port 8081
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8081").await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+#[derive(Serialize)]
+struct HealthResponse {
+    status: String,
+    uptime_seconds: u64,
+    database: String,
+    version: String,
+}
+
+async fn health_check(State(pool): State<SqlitePool>) -> (StatusCode, Json<HealthResponse>) {
+    // Check DB connection
+    let db_status = match sqlx::query("SELECT 1").fetch_one(&pool).await {
+        Ok(_) => "connected",
+        Err(_) => "error",
+    };
+
+    // Calculate uptime
+    let uptime = START_TIME.elapsed().unwrap_or_default().as_secs();
+
+    let response = HealthResponse {
+        status: if db_status == "connected" { "healthy".to_string() } else { "unhealthy".to_string() },
+        uptime_seconds: uptime,
+        database: db_status.to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+    };
+
+    let status_code = if db_status == "connected" {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
+
+    (status_code, Json(response))
 }
 
 async fn test_insert_handler(State(pool): State<SqlitePool>) -> &'static str {
@@ -78,7 +117,7 @@ async fn fetch_notifications(
     State(pool): State<SqlitePool>,
     Query(params): Query<NotificationQuery>,
 ) -> Json<Vec<Notification>> {
-    println!("Fetching notifications");
+    //println!("Fetching notifications");
     let last_seen_id = params.id.unwrap_or(-1);
 
     let rows = db::get_latest_notifications(&pool, &last_seen_id)

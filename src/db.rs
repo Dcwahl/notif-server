@@ -52,7 +52,7 @@ pub async fn get_latest_notifications(pool: &SqlitePool, id: &i64) -> Result<Vec
         .fetch_all(pool)
         .await?;
 
-    println!("Fetched {} notifications from DB", rows.len());
+    //println!("Fetched {} notifications from DB", rows.len());
 
     Ok(rows)
 }
