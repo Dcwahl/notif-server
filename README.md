@@ -2,6 +2,12 @@
 
 Notification server running on Raspberry Pi. Responds to pings from your computer when on home wifi.
 
+## Monitoring
+
+Health check endpoint: `http://<pi-ip>:3000/health`
+
+Returns 200 OK with status, uptime, and DB connection info.
+
 ## Development
 
 ```bash
