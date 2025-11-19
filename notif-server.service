@@ -5,9 +5,8 @@ After=network.target
 [Service]
 Type=simple
 User=diegowahl
-# %h expands to the home directory of the user above
-WorkingDirectory=%h/notif-server
-ExecStart=%h/notif-server/target/release/notif-server
+WorkingDirectory=/home/diegowahl/notif-server
+ExecStart=/home/diegowahl/notif-server/target/release/notif-server
 Restart=always
 RestartSec=10
 
