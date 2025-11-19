@@ -40,7 +40,7 @@ sudo systemctl status notif-server
 cd ~/notif-server && cargo build --release && sudo cp notif-server.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable notif-server && sudo systemctl start notif-server
 ```
 
-### After updates
+### Regular updates (code changes only)
 
 ```bash
 cd ~/notif-server
@@ -52,6 +52,24 @@ sudo systemctl restart notif-server
 **One-liner:**
 ```bash
 cd ~/notif-server && git pull && cargo build --release && sudo systemctl restart notif-server
+```
+
+### Service file updates (rare)
+
+Only needed when `notif-server.service` changes. Systemd reads service files from `/etc/systemd/system/`, not from your repo, so you must manually copy updates there:
+
+```bash
+cd ~/notif-server
+git pull
+cargo build --release
+sudo cp notif-server.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl restart notif-server
+```
+
+**One-liner:**
+```bash
+cd ~/notif-server && git pull && cargo build --release && sudo cp notif-server.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl restart notif-server
 ```
 
 ### View logs
