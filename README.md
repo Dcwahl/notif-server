@@ -20,7 +20,7 @@ cargo run
 
 ```bash
 # Clone and build
-cd /home/pi
+cd ~
 git clone <your-repo-url> notif-server
 cd notif-server
 cargo build --release
@@ -37,13 +37,13 @@ sudo systemctl status notif-server
 
 **One-liner:**
 ```bash
-cd /home/pi/notif-server && cargo build --release && sudo cp notif-server.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable notif-server && sudo systemctl start notif-server
+cd ~/notif-server && cargo build --release && sudo cp notif-server.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable notif-server && sudo systemctl start notif-server
 ```
 
 ### After updates
 
 ```bash
-cd /home/pi/notif-server
+cd ~/notif-server
 git pull
 cargo build --release
 sudo systemctl restart notif-server
@@ -51,7 +51,7 @@ sudo systemctl restart notif-server
 
 **One-liner:**
 ```bash
-cd /home/pi/notif-server && git pull && cargo build --release && sudo systemctl restart notif-server
+cd ~/notif-server && git pull && cargo build --release && sudo systemctl restart notif-server
 ```
 
 ### View logs

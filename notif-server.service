@@ -4,9 +4,11 @@ After=network.target
 
 [Service]
 Type=simple
-User=diegowahl
-WorkingDirectory=/home/pi/notif-server
-ExecStart=/home/pi/notif-server/target/release/notif-server
+# Change this to match your Raspberry Pi username (default is 'pi')
+User=pi
+# %h expands to the home directory of the user above
+WorkingDirectory=%h/notif-server
+ExecStart=%h/notif-server/target/release/notif-server
 Restart=always
 RestartSec=10
 
